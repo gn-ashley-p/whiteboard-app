@@ -1,11 +1,11 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import './App.css';
 
-function Whiteboard() {
-  let drawing = false;
-  let mousePos = { x: 0, y: 0 };
-  let currentColor = "black";
+const Whiteboard = () => {
+  const [drawing, setDrawing] = useState(false);
+  const [currentColor, setCurrentColor] = useState("black");
   const canvasRef = useRef(null);
+  const mousePos = useRef({ x: 0, y: 0 });
 
   const getMousePosition = (canvas, event) => {
     const rect = canvas.getBoundingClientRect();
@@ -15,49 +15,70 @@ function Whiteboard() {
     };
   }
 
-  const handleStart = (event) => {
-    drawing = true; 
-    mousePos = getMousePosition(canvasRef.current, event);
-  }
+  useEffect(() => {
+    const canvas = canvasRef.current;
 
-  const handleStop = () => {
-    drawing = false;
-  }
+    const setCanvasSize = () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    };
 
-  const handleMove = (event) => {
-    if (!drawing) { return; }
-    const lastPos = mousePos;
-    mousePos = getMousePosition(canvasRef.current, event);
-
-    const ctx = canvasRef.current.getContext('2d');
-    ctx.strokeStyle = currentColor;
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(lastPos.x, lastPos.y);
-    ctx.lineTo(mousePos.x, mousePos.y);
-    ctx.closePath();
-    ctx.stroke();
-  }
-  
-  const changeColor = (color) => () => {
-    currentColor = color;
-  }
+    setCanvasSize();
+    window.addEventListener('resize', setCanvasSize);
+    return () => {
+      window.removeEventListener('resize', setCanvasSize);
+    }
+  }, []);
 
   useEffect(() => {
     const canvas = canvasRef.current;
+    const handleStart = (event) => {
+      setDrawing(true);
+      mousePos.current = getMousePosition(canvasRef.current, event);
+    };
+
+    const handleStop = () => {
+      setDrawing(false);
+    };
+
+    const handleMove = (event) => {
+      if (!drawing) { return; }
+      const lastPos = mousePos.current;
+      const currentPos = getMousePosition(canvasRef.current, event);
+      mousePos.current = currentPos; 
+
+      const ctx = canvasRef.current.getContext('2d');
+      ctx.strokeStyle = currentColor;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(lastPos.x, lastPos.y);
+      ctx.lineTo(currentPos.x, currentPos.y);
+      ctx.closePath();
+      ctx.stroke();
+    };
+
     canvas.addEventListener('mousedown', handleStart);
     canvas.addEventListener('mouseup', handleStop);
     canvas.addEventListener('mousemove', handleMove);
     canvas.addEventListener('mouseleave', handleStop);
-  })
+
+
+    return () => {
+      canvas.removeEventListener('mousedown', handleStart);
+      canvas.removeEventListener('mouseup', handleStop);
+      canvas.removeEventListener('mousemove', handleMove);
+      canvas.removeEventListener('mouseleave', handleStop);
+
+    };
+  }, [currentColor, drawing]);
 
   return (
     <div>
-      <button onClick={changeColor("red")}>red</button>
-      <button onClick={changeColor("green")}>green</button>
-      <button onClick={changeColor("blue")}>blue</button>
-      <button onClick={changeColor("black")}>black</button>
-      <canvas id="whiteboard" width={window.innerWidth} height={window.innerHeight} ref={canvasRef}></canvas>;
+      <button onClick={() => setCurrentColor("red")}>red</button>
+      <button onClick={() => setCurrentColor("green")}>green</button>
+      <button onClick={() => setCurrentColor("blue")}>blue</button>
+      <button onClick={() => setCurrentColor("black")}>black</button>
+      <canvas id="whiteboard" width={window.innerWidth} height={window.innerHeight} ref={canvasRef}></canvas>
     </div>
   );
 }
